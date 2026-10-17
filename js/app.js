@@ -148,9 +148,27 @@ async function orsRoute(points){
   const r=await fetch(C.ROUTE_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!r.ok){let msg="";try{msg=(await r.json()).error?.message||(await r.json()).error||"";}catch(e){}throw new Error("Routing "+r.status+(msg?": "+msg:""));}
   const g=await r.json();const f=g.features&&g.features[0];if(!f)throw new Error("Routing: keine Route");
-  return {geometry:f.geometry.coordinates.map(c=>[c[1],c[0],c[2]]),segments:f.properties.segments,summary:f.properties.summary};
+  const pr=f.properties||{};
+  return {geometry:f.geometry.coordinates.map(c=>[c[1],c[0],c[2]]),segments:pr.segments,wayPoints:pr.way_points,summary:pr.summary};
 }
-const legsFromORS=(ors,pace)=>ors.segments.map(s=>{const km=s.distance;const asc=s.ascent||0;return {km,min:km/pace*60+asc/10,ascent:asc,descent:s.descent||0,estimated:false};});
+// Etappen aus der ORS-Antwort: aus den Wegpunkt-Indizes der Geometrie berechnet (robust, auch ohne "segments")
+function legsFromORS(ors,pace){
+  const g=ors.geometry;const wp=ors.wayPoints;
+  if(Array.isArray(wp)&&wp.length>=2&&g&&g.length){
+    const legs=[];
+    for(let k=1;k<wp.length;k++){
+      let km=0,asc=0,desc=0;
+      for(let i=Math.max(1,wp[k-1]+1);i<=Math.min(wp[k],g.length-1);i++){
+        km+=P.dist({lat:g[i-1][0],lon:g[i-1][1]},{lat:g[i][0],lon:g[i][1]});
+        const dz=(g[i][2]??0)-(g[i-1][2]??0);if(g[i][2]!=null&&g[i-1][2]!=null){if(dz>0)asc+=dz;else desc-=dz;}
+      }
+      legs.push({km,min:km/pace*60+asc/10,ascent:Math.round(asc),descent:Math.round(desc),estimated:false});
+    }
+    return legs;
+  }
+  if(Array.isArray(ors.segments))return ors.segments.map(s=>{const km=s.distance>50?s.distance/1000:s.distance;const asc=s.ascent||0;return {km,min:km/pace*60+asc/10,ascent:asc,descent:s.descent||0,estimated:false};});
+  throw new Error("Antwort ohne Etappen");
+}
 
 // ---------- Planen ----------
 async function finishPlan(route,opts,baseWarnings,allowDrop){
