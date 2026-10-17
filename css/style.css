@@ -179,3 +179,12 @@ nav.tabs button .ico{display:none;font-size:1.15rem;line-height:1}
 .links a,.place .links a{color:var(--wine);font-weight:600;text-decoration:none}
 .links a:hover{text-decoration:underline}
 .place .pt .btn.small{white-space:nowrap}
+
+/* ---- Anmeldung & Teilen ---- */
+header.top .wrap{align-items:center}
+.userbtn{border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:999px;padding:6px 12px;font:600 .82rem var(--body);cursor:pointer;white-space:nowrap}
+.userbtn.on{background:#fff;color:var(--wine)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:grid;place-items:end center;padding:16px}
+.modal .sheet{width:100%;max-width:480px;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+@media (min-width:721px){.modal{place-items:center}}
+#shareUrl{font-size:.9rem}

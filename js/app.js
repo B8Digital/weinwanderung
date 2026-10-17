@@ -205,7 +205,7 @@ async function recompute(){
   const ls=current.res.lastStop;
   if(ls&&ls.arrive>current.opts.lastTime+0.02){current.warnings.push("Die letzte Einkehr liegt "+fmtMin((ls.arrive-current.opts.lastTime)*60)+" nach "+hhmm(current.opts.lastTime)+" – einen Stopp entfernen oder Zeitfenster verlängern.");renderRoute(current);}
 }
-$("#planBtn").addEventListener("click",()=>{const o=readOpts();if(o.lastTime<=o.startTime){toast("Die letzte Einkehr muss nach dem Start liegen");return;}DONE=new Set();pendingInsert=null;runPlan(o);showTab("tab-route");});
+$("#planBtn").addEventListener("click",()=>{$("#sharePanel").hidden=true;const o=readOpts();if(o.lastTime<=o.startTime){toast("Die letzte Einkehr muss nach dem Start liegen");return;}DONE=new Set();pendingInsert=null;runPlan(o);showTab("tab-route");});
 
 // Routenbearbeitung
 function removeStop(id){
@@ -254,9 +254,57 @@ async function replanFromNow(){
   await runPlan(o);toast("Route ab jetzt neu geplant");
 }
 
+// ---------- Supabase: Anmeldung & Kurzlinks ----------
+let sb=null;let USER=null;
+try{if(window.supabase&&C.SUPABASE_URL&&C.SUPABASE_KEY)sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_KEY);}catch(e){sb=null;}
+function renderUser(){const b=$("#userBtn");if(!b)return;if(USER){b.textContent=USER.email.split("@")[0];b.classList.add("on");b.setAttribute("aria-label","Konto");}else{b.textContent="Anmelden";b.classList.remove("on");}
+  $("#authOut").hidden=!USER;$("#authIn").hidden=!!USER;if(USER)$("#authEmail").textContent=USER.email;}
+if(sb){
+  sb.auth.getSession().then(({data})=>{USER=data.session?data.session.user:null;renderUser();});
+  sb.auth.onAuthStateChange((_e,session)=>{USER=session?session.user:null;renderUser();});
+}else{const b=$("#userBtn");if(b)b.hidden=true;}
+$("#userBtn").addEventListener("click",()=>{renderUser();$("#authModal").hidden=false;$("#authStatus").textContent="";});
+$("#authClose").addEventListener("click",()=>$("#authModal").hidden=true);
+$("#authModal").addEventListener("click",e=>{if(e.target===$("#authModal"))$("#authModal").hidden=true;});
+$("#sendCode").addEventListener("click",async()=>{
+  const email=$("#authMail").value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){$("#authStatus").textContent="Bitte eine gültige E-Mail-Adresse eingeben.";return;}
+  $("#authStatus").textContent="Code wird gesendet…";
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(error){$("#authStatus").textContent="Senden fehlgeschlagen: "+error.message;return;}
+  $("#codeWrap").hidden=false;$("#authStatus").textContent="E-Mail ist unterwegs. Code eingeben – oder den Link in der E-Mail antippen.";$("#authCode").focus();
+});
+$("#verifyCode").addEventListener("click",async()=>{
+  const email=$("#authMail").value.trim();const token=$("#authCode").value.replace(/\s/g,"");
+  if(token.length<6){$("#authStatus").textContent="Bitte den 6‑stelligen Code eingeben.";return;}
+  $("#authStatus").textContent="Prüfe…";
+  const {error}=await sb.auth.verifyOtp({email,token,type:"email"});
+  if(error){$("#authStatus").textContent="Code ungültig oder abgelaufen.";return;}
+  $("#authStatus").textContent="";toast("Angemeldet");setTimeout(()=>$("#authModal").hidden=true,400);
+});
+$("#logoutBtn").addEventListener("click",async()=>{await sb.auth.signOut();toast("Abgemeldet");$("#authModal").hidden=true;});
+async function shortLink(hash){ // hash ohne "#"
+  if(!sb)return null;
+  const alphabet="abcdefghijklmnopqrstuvwxyz0123456789";
+  for(let attempt=0;attempt<3;attempt++){
+    let id="";const rnd=new Uint8Array(8);crypto.getRandomValues(rnd);for(const b of rnd)id+=alphabet[b%36];
+    const {error}=await sb.from("shared_routes").insert({id,hash,owner:USER?USER.id:null});
+    if(!error)return location.origin+location.pathname+"#t="+id;
+    if(!/duplicate/i.test(error.message))return null;
+  }
+  return null;
+}
+async function resolveShort(id){if(!sb)return null;const {data}=await sb.from("shared_routes").select("hash").eq("id",id).maybeSingle();return data?data.hash:null;}
+
 // ---------- Teilen / Speichern ----------
 function routeHash(cur){const ids=cur.route.map(r=>r.p.id);const o=cur.opts;return "#r="+ids.join(",")+"&d="+isoDate(o.date)+"&t="+hhmm(o.startTime)+"-"+hhmm(o.lastTime)+"&m="+o.returnMode+"&s="+o.stay+"&p="+o.pace;}
 function updateHash(){if(!current)return;try{history.replaceState(null,"",location.pathname+location.search+routeHash(current));}catch(e){}}
+async function resolveHashIfShort(){
+  const h=location.hash.slice(1);if(!h.startsWith("t="))return false;
+  const hash=await resolveShort(h.slice(2).replace(/[^a-z0-9]/g,""));
+  if(!hash){toast("Dieser Link ist nicht (mehr) gültig");return false;}
+  try{history.replaceState(null,"",location.pathname+location.search+"#"+hash);}catch(e){}
+  return true;
+}
 function loadFromHash(){
   const h=location.hash.slice(1);if(!h.startsWith("r="))return false;
   const q=Object.fromEntries(h.split("&").map(kv=>{const i=kv.indexOf("=");return [kv.slice(0,i),decodeURIComponent(kv.slice(i+1))];}));
@@ -267,6 +315,20 @@ function loadFromHash(){
   const route=ps.map((p,i)=>({p,role:i===0?"start":(returnMode!=="taxi"&&i===ps.length-1)?"end":(p.kind==="sight"?"sight":"stop")}));
   writeOpts(opts);finishPlan(route,opts,["Route aus geteiltem Link geladen."],false);showTab("tab-route");return true;
 }
+async function openShare(cur){
+  const panel=$("#sharePanel");panel.hidden=false;$("#shareUrl").value="Link wird erstellt…";window.scrollTo({top:0,behavior:"smooth"});
+  const longUrl=location.origin+location.pathname+routeHash(cur);
+  let url=null;try{url=await shortLink(routeHash(cur).slice(1));}catch(e){url=null;}
+  if(!url){url=longUrl;$("#shareNote").textContent="Kurzlink nicht verfügbar – der lange Link funktioniert genauso.";}
+  else $("#shareNote").textContent="Wer den Link öffnet, sieht genau diese Route mit Zeitplan und kann sie selbst anpassen.";
+  $("#shareUrl").value=url;
+  const text="Weinweg Südsteiermark – "+cur.opts.start.name+", "+DOWN[cur.opts.dow]+" "+cur.opts.date.toLocaleDateString("de-AT")+": "+url;
+  $("#shareWa").href="https://wa.me/?text="+encodeURIComponent(text);
+  $("#shareMail").href="mailto:?subject="+encodeURIComponent("Weinweg Südsteiermark – Routenvorschlag")+"&body="+encodeURIComponent(routeText(cur).replace(/\n[^\n]*$/,"")+"\n\n"+url);
+  const sys=$("#shareSys");sys.hidden=!navigator.share;sys.onclick=async()=>{try{await navigator.share({title:"Weinweg Südsteiermark",text,url});}catch(e){}};
+  $("#shareCopy").onclick=()=>copy(url);
+}
+$("#shareClose").addEventListener("click",()=>$("#sharePanel").hidden=true);
 function saveRoute(){if(!current)return;const o=current.opts;const name=o.start.name+" · "+DOWN[o.dow]+" "+o.date.toLocaleDateString("de-AT")+" · "+current.route.filter(r=>r.role==="stop").length+" Einkehren";SAVED.unshift({name,hash:routeHash(current),ts:Date.now()});SAVED=SAVED.slice(0,12);store.set("ww.saved",SAVED);renderSaved();toast("Route gespeichert");}
 function renderSaved(){
   const card=$("#savedCard");card.hidden=!SAVED.length;
@@ -343,7 +405,7 @@ function renderRoute(cur){
   $("#replanNow").addEventListener("click",replanFromNow);
   $("#saveBtn").addEventListener("click",saveRoute);
   $("#shuffleBtn").addEventListener("click",()=>{const o={...cur.opts,jitter:1.6,exclude:[]};DONE=new Set();runPlan(o);});
-  $("#shareBtn").addEventListener("click",async()=>{const url=location.origin+location.pathname+routeHash(cur);if(navigator.share){try{await navigator.share({title:"Weinweg Südsteiermark",text:routeText(cur),url});return;}catch(e){}}copy(url);});
+  $("#shareBtn").addEventListener("click",()=>openShare(cur));
   out.querySelectorAll("[data-done]").forEach(cb=>cb.addEventListener("change",()=>{if(cb.checked)DONE.add(cb.dataset.done);else DONE.delete(cb.dataset.done);cb.closest(".stop").classList.toggle("done",cb.checked);}));
 }
 
@@ -447,7 +509,8 @@ $("#pAdd").addEventListener("click",()=>{
 
 // ---------- Start ----------
 initMap();renderSaved();
-loadOSM(false).then(()=>{ // Geteilter Link, sonst Testroute: Ehrenhausen Kirchenplatz, 10–18 Uhr, 5 Buschenschanken, Weintaxi
+loadOSM(false).then(async()=>{ // Geteilter Link (kurz oder lang), sonst Testroute: Ehrenhausen Kirchenplatz, 10–18 Uhr, 5 Buschenschanken, Weintaxi
+  await resolveHashIfShort();
   if(!loadFromHash()&&!current)runPlan(readOpts());
 });
 })();

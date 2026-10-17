@@ -12,7 +12,8 @@ Mobile Web-App zum Planen von Wanderrouten entlang der Südsteirischen Weinstra�
 - Betriebsdaten werden beim Laden mit OpenStreetMap (Overpass) abgeglichen und ergänzt; eigene Betriebe lassen sich hinzufügen (lokal im Browser gespeichert)
 - Route bearbeiten: Stopps auf der Karte oder im Plan entfernen, tauschen oder aufnehmen; Betriebe nach Entfernung ab dem letzten Stopp gegliedert („Nächster Stopp“, „Passend einfügen“)
 - Wetter je Stopp und Sonnenuntergang (open-meteo), Höhenprofil aus den Routing-Daten
-- Route als Link teilen (Stopps im URL-Hash), lokal speichern, „Andere Vorschläge“
+- Route teilen: Kurzlink (`#t=…`, Tabelle `shared_routes` in Supabase), Kopieren, WhatsApp, E-Mail, System-Teilen; Routen lokal speichern, „Andere Vorschläge“
+- Anmeldung per E-Mail-Code (Supabase Auth, ohne Passwort); Tabelle `saved_routes` für nutzerbezogene Routen ist vorbereitet
 - Installierbar als PWA (Home-Bildschirm)
 
 ## Betrieb
@@ -26,6 +27,7 @@ Statische Seite, keine Build-Schritte. Dienste:
 | Nominatim | Adresssuche | nein |
 | OpenStreetMap-Kacheln | Karte | nein |
 | open-meteo | Wetter, Sonnenuntergang | nein |
+| Supabase (REST + Auth) | Kurzlinks, Anmeldung, gespeicherte Routen | Publishable Key in `js/config.js` (für Browser bestimmt, RLS schützt die Tabellen) |
 
 Ist der Routing-Dienst nicht erreichbar, läuft die App mit Luftlinie × 1,35 als Schätzung. Die Edge Function erlaubt Aufrufe nur von `https://b8digital.github.io` (Secret `ALLOWED_ORIGINS`, kommagetrennt, zum Erweitern) und für höchstens 25 Punkte innerhalb der Steiermark.
 
