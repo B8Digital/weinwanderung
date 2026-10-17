@@ -508,6 +508,10 @@ $("#pAdd").addEventListener("click",()=>{
   store.set("ww.custom",CUSTOM);renderPlaces();fillSelects();drawAllPlaces();["#pName","#pAddr","#pLat","#pLon","#pTags"].forEach(s=>$(s).value="");$("#pGeoStatus").textContent="";toast("Gespeichert");
 });
 
+// ---------- Version ----------
+(function(){const v=$("#versionInfo");if(v)v.textContent="Weinweg Südsteiermark · Version "+(C.APP_VERSION||"?")+" · Daten: OpenStreetMap, openrouteservice, open-meteo";
+  const h=document.querySelector("header.top .sub");if(h)h.title="Version "+(C.APP_VERSION||"");})();
+
 // ---------- Start ----------
 initMap();renderSaved();
 loadOSM(false).then(async()=>{ // Geteilter Link (kurz oder lang), sonst Testroute: Ehrenhausen Kirchenplatz, 10–18 Uhr, 5 Buschenschanken, Weintaxi
