@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Weinweg Südsteiermark</title>
+<meta name="description" content="Wanderrouten in der Südsteiermark von Buschenschank zu Buschenschank planen – mit Karte, Gehzeiten, GPS und Weintaxi.">
+<meta name="theme-color" content="#398140">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Weinweg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <h1>Weinweg Südsteiermark</h1>
+  <div class="sub">Wanderrouten von Buschenschank zu Buschenschank</div>
+</div></header>
+
+<nav class="tabs" role="tablist"><div class="wrap">
+  <button role="tab" id="tab-plan" aria-selected="true" aria-controls="panel-plan">Planen</button>
+  <button role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map">Karte</button>
+  <button role="tab" id="tab-route" aria-selected="false" aria-controls="panel-route">Plan</button>
+  <button role="tab" id="tab-places" aria-selected="false" aria-controls="panel-places">Betriebe</button>
+</div></nav>
+
+<main>
+
+<!-- PLANEN -->
+<section class="panel wrap stack" id="panel-plan" role="tabpanel">
+  <div class="card stack">
+    <div><span class="eyebrow">Wann &amp; wo</span></div>
+    <div class="grid2">
+      <label class="f">Datum<input type="date" id="date"></label>
+      <label class="f">Start um<input type="time" id="startTime" value="10:00" step="300"></label>
+    </div>
+    <label class="f">Startpunkt<select id="start"></select></label>
+    <div class="row">
+      <input id="geoQ" class="grow" placeholder="Anderen Startort suchen (Ort, Adresse)…" aria-label="Startort suchen">
+      <button class="btn small ghost" type="button" id="geoBtn">Suchen</button>
+      <button class="btn small ghost" type="button" id="gpsStart" title="Meinen Standort als Start">GPS</button>
+    </div>
+    <div id="geoResults" class="radio" hidden></div>
+    <label class="f">Letzte Einkehr spätestens um<input type="time" id="lastTime" value="18:00" step="300"></label>
+    <div>
+      <span class="eyebrow">Rückweg</span>
+      <div class="radio" id="returnMode" style="margin-top:6px">
+        <label><input type="radio" name="ret" value="taxi" checked><span>Weintaxi zum Ausgangspunkt<small>Die Wanderung endet bei der letzten Einkehr, das WEINmobil bringt dich zurück.</small></span></label>
+        <label><input type="radio" name="ret" value="walk"><span>Zu Fuß zum Ausgangspunkt<small>Rundweg, der Rückweg wird ins Zeitfenster eingerechnet.</small></span></label>
+        <label><input type="radio" name="ret" value="end"><span>Anderer Endpunkt<small>Zu Fuß bis zum gewählten Ziel.</small></span></label>
+      </div>
+      <label class="f" id="endWrap" hidden style="margin-top:8px">Endpunkt<select id="end"></select></label>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <div><span class="eyebrow">Einkehren &amp; Wegpunkte</span></div>
+    <div class="grid2">
+      <label class="f">Buschenschanken
+        <div class="stepper"><button type="button" data-step="nStops" data-d="-1" aria-label="weniger">−</button><output id="nStopsOut">5</output><button type="button" data-step="nStops" data-d="1" aria-label="mehr">+</button></div>
+        <input type="hidden" id="nStops" value="5">
+      </label>
+      <label class="f">Weitere Wegpunkte
+        <div class="stepper"><button type="button" data-step="nSights" data-d="-1" aria-label="weniger">−</button><output id="nSightsOut">2</output><button type="button" data-step="nSights" data-d="1" aria-label="mehr">+</button></div>
+        <input type="hidden" id="nSights" value="2">
+      </label>
+    </div>
+    <div class="grid2">
+      <label class="f">Einkehrdauer (Richtwert)<select id="stay"><option value="45">45 min</option><option value="60" selected>60 min</option><option value="75">75 min</option><option value="90">90 min</option></select></label>
+      <label class="f">Tempo<select id="pace"><option value="3.2">gemütlich · 3,2 km/h</option><option value="3.8" selected>normal · 3,8 km/h</option><option value="4.5">zügig · 4,5 km/h</option></select></label>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <div><span class="eyebrow">Interessen</span><p class="notice" style="margin-top:2px">Wählt aus, welche Betriebe und Wegpunkte bevorzugt werden.</p></div>
+    <div class="chips" id="interests">
+      <label class="chip" data-on="1"><input type="checkbox" value="aussicht" checked>Aussicht &amp; Weinberge</label>
+      <label class="chip" data-on="1"><input type="checkbox" value="kultur" checked>Kultur &amp; Geschichte</label>
+      <label class="chip" data-on="0"><input type="checkbox" value="natur">Natur &amp; Wasser</label>
+      <label class="chip" data-on="0"><input type="checkbox" value="familie">Familie</label>
+      <label class="chip" data-on="0"><input type="checkbox" value="kulinarik">Jause &amp; Kulinarik</label>
+      <label class="chip" data-on="0"><input type="checkbox" value="ruhig">Abseits des Trubels</label>
+    </div>
+  </div>
+
+  <button class="btn wide" id="planBtn" type="button">Route planen</button>
+  <p class="notice" id="dataStatus">Betriebsdaten werden mit OpenStreetMap abgeglichen…</p>
+</section>
+
+<!-- KARTE -->
+<section class="panel" id="panel-map" role="tabpanel" hidden>
+  <div id="map" aria-label="Karte"></div>
+  <div class="mapbar wrap">
+    <button class="btn small" type="button" id="locBtn">Mein Standort</button>
+    <button class="btn small ghost" type="button" id="fitBtn">Route zeigen</button>
+    <span class="notice" id="mapStatus"></span>
+  </div>
+</section>
+
+<!-- PLAN -->
+<section class="panel wrap stack" id="panel-route" role="tabpanel" hidden>
+  <div id="routeOut"><div class="card empty"><b>Noch keine Route</b>Unter „Planen“ Start, Zeitfenster und Einkehren wählen.</div></div>
+</section>
+
+<!-- BETRIEBE -->
+<section class="panel wrap stack" id="panel-places" role="tabpanel" hidden>
+  <div class="card">
+    <h2>Betriebe &amp; Wegpunkte</h2>
+    <p class="notice">Grundlage sind die Betriebe rund um Ehrenhausen, Ratsch, Gamlitz und Sulztal, ergänzt und verortet über OpenStreetMap. Lage lässt sich hier korrigieren, eigene Betriebe lassen sich ergänzen (bleiben auf diesem Gerät).</p>
+    <div class="chips" style="margin-top:10px" id="placeFilter">
+      <button class="chip" data-on="1" data-k="all" type="button">Alle</button>
+      <button class="chip" data-on="0" data-k="buschenschank" type="button">Buschenschank</button>
+      <button class="chip" data-on="0" data-k="gasthaus" type="button">Gasthaus</button>
+      <button class="chip" data-on="0" data-k="sight" type="button">Wegpunkte</button>
+    </div>
+  </div>
+  <div class="card" id="placeList"></div>
+  <div class="card">
+    <details class="add"><summary>Betrieb oder Wegpunkt hinzufügen</summary>
+      <div class="stack" style="margin-top:10px">
+        <label class="f">Name<input id="pName" placeholder="z. B. Buschenschank Beispiel"></label>
+        <div class="grid2">
+          <label class="f">Art<select id="pKind"><option value="buschenschank">Buschenschank</option><option value="gasthaus">Gasthaus / Weingut mit Küche</option><option value="sight">Wegpunkt / Sehenswürdigkeit</option></select></label>
+          <label class="f">Ort / Adresse<input id="pAddr" placeholder="Ratsch 12, Ehrenhausen"></label>
+        </div>
+        <div class="row"><button class="btn small ghost" type="button" id="pGeocode">Adresse suchen</button><span class="notice" id="pGeoStatus"></span></div>
+        <div class="grid2">
+          <label class="f">Breite (lat)<input id="pLat" inputmode="decimal" placeholder="46.7200"></label>
+          <label class="f">Länge (lon)<input id="pLon" inputmode="decimal" placeholder="15.5600"></label>
+        </div>
+        <label class="f">Stichworte (Komma)<input id="pTags" placeholder="aussicht, kulinarik"></label>
+        <button class="btn" type="button" id="pAdd">Speichern</button>
+      </div>
+    </details>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/config.js"></script>
+<script src="js/places.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
