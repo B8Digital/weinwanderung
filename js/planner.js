@@ -23,7 +23,7 @@ function openStatus(p,dow,t){
 
 // Stopps auswählen → Liste von {p, role}
 function selectRoute(opts,places){
-  const {start,end,returnMode,nStops,nSights,stay,pace,interests,dow,startTime,lastTime,exclude=[]}=opts;
+  const {start,end,returnMode,nStops,nSights,stay,pace,interests,dow,startTime,lastTime,exclude=[],jitter=0}=opts;
   const inter=new Set(interests);const ex=new Set(exclude);
   const einkehr=places.filter(p=>(p.kind==="buschenschank"||p.kind==="gasthaus")&&p.id!==start.id&&p.id!==end.id&&!ex.has(p.id));
   const sights=places.filter(p=>p.kind==="sight"&&p.id!==start.id&&p.id!==end.id&&!ex.has(p.id));
@@ -53,6 +53,7 @@ function selectRoute(opts,places){
       const st=openStatus(p,dow,arrive);
       if(st.s==="later"&&st.opens-arrive>0.75)s-=1.5;
       if(st.s==="closed")s-=3;
+      if(jitter)s+=(Math.random()-0.5)*jitter;
       if(s>bestS){bestS=s;best=p;}
     }
     if(!best)break;
@@ -128,5 +129,17 @@ function dropLastStop(route){
   return true;
 }
 
-window.Planner={dist,walkKm,hhmm,parseT,fmtKm,fmtMin,openStatus,selectRoute,airLegs,schedule,dropLastStop};
+// Beste Einfügeposition (kleinster Umweg) für einen neuen Stopp
+function bestInsertIndex(route,p){
+  let best=1,bestDet=Infinity;
+  for(let i=0;i<route.length-1;i++){
+    const a=route[i].p,b=route[i+1].p;const det=walkKm(a,p)+walkKm(p,b)-walkKm(a,b);
+    if(det<bestDet){bestDet=det;best=i+1;}
+  }
+  // Bei Weintaxi-Rückfahrt darf der Stopp auch ans Ende
+  const last=route[route.length-1];
+  if(last.role!=="end"){const det=walkKm(last.p,p);if(det<bestDet){best=route.length;}}
+  return best;
+}
+window.Planner={dist,walkKm,hhmm,parseT,fmtKm,fmtMin,openStatus,selectRoute,airLegs,schedule,dropLastStop,bestInsertIndex};
 })();

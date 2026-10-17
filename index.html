@@ -25,10 +25,10 @@
 </div></header>
 
 <nav class="tabs" role="tablist"><div class="wrap">
-  <button role="tab" id="tab-plan" aria-selected="true" aria-controls="panel-plan">Planen</button>
-  <button role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map">Karte</button>
-  <button role="tab" id="tab-route" aria-selected="false" aria-controls="panel-route">Plan</button>
-  <button role="tab" id="tab-places" aria-selected="false" aria-controls="panel-places">Betriebe</button>
+  <button role="tab" id="tab-plan" aria-selected="true" aria-controls="panel-plan"><span class="ico">⚙</span>Planen</button>
+  <button role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map"><span class="ico">🗺</span>Karte</button>
+  <button role="tab" id="tab-route" aria-selected="false" aria-controls="panel-route"><span class="ico">🕙</span>Plan</button>
+  <button role="tab" id="tab-places" aria-selected="false" aria-controls="panel-places"><span class="ico">🍇</span>Betriebe</button>
 </div></nav>
 
 <main>
@@ -92,6 +92,10 @@
 
   <button class="btn wide" id="planBtn" type="button">Route planen</button>
   <p class="notice" id="dataStatus">Betriebsdaten werden mit OpenStreetMap abgeglichen…</p>
+  <div class="card stack" id="savedCard" hidden>
+    <div><span class="eyebrow">Gespeicherte Routen</span></div>
+    <div id="savedList" class="stack"></div>
+  </div>
 </section>
 
 <!-- KARTE -->
@@ -100,7 +104,7 @@
   <div class="mapbar wrap">
     <button class="btn small" type="button" id="locBtn">Mein Standort</button>
     <button class="btn small ghost" type="button" id="fitBtn">Route zeigen</button>
-    <span class="notice" id="mapStatus"></span>
+    <span class="notice" id="mapStatus">Tipp: Betrieb antippen → in Route aufnehmen oder entfernen.</span>
   </div>
 </section>
 
@@ -113,7 +117,8 @@
 <section class="panel wrap stack" id="panel-places" role="tabpanel" hidden>
   <div class="card">
     <h2>Betriebe &amp; Wegpunkte</h2>
-    <p class="notice">Grundlage sind die Betriebe rund um Ehrenhausen, Ratsch, Gamlitz und Sulztal, ergänzt und verortet über OpenStreetMap. Lage lässt sich hier korrigieren, eigene Betriebe lassen sich ergänzen (bleiben auf diesem Gerät).</p>
+    <p class="notice" id="placesRef">Sortiert nach Entfernung ab Startpunkt.</p>
+    <div id="insertHint" class="notice" hidden></div>
     <div class="chips" style="margin-top:10px" id="placeFilter">
       <button class="chip" data-on="1" data-k="all" type="button">Alle</button>
       <button class="chip" data-on="0" data-k="buschenschank" type="button">Buschenschank</button>
@@ -121,7 +126,7 @@
       <button class="chip" data-on="0" data-k="sight" type="button">Wegpunkte</button>
     </div>
   </div>
-  <div class="card" id="placeList"></div>
+  <div id="placeList" class="stack"></div>
   <div class="card">
     <details class="add"><summary>Betrieb oder Wegpunkt hinzufügen</summary>
       <div class="stack" style="margin-top:10px">

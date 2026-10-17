@@ -126,3 +126,49 @@ details.add summary{cursor:pointer;font-weight:600;color:var(--wine)}
 .empty{text-align:center;color:var(--muted);padding:24px 8px}
 .empty b{display:block;font-family:var(--display);font-weight:500;font-size:1.1rem;color:var(--fg)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* ---- Mobile-Layout & Fixes ---- */
+[hidden]{display:none!important}
+:root{--chrome:156px}
+#map{height:calc(100vh - var(--chrome));height:calc(100dvh - var(--chrome))}
+nav.tabs button .ico{display:none;font-size:1.15rem;line-height:1}
+@media (max-width:720px){
+  :root{--chrome:132px}
+  header.top .wrap{padding-block:calc(10px + env(safe-area-inset-top,0px)) 8px}
+  header.top h1{font-size:1.2rem}
+  header.top .sub{display:none}
+  nav.tabs{position:fixed;top:auto;bottom:0;left:0;right:0;border-top:1px solid var(--line);border-bottom:0;background:var(--paper);padding-bottom:env(safe-area-inset-bottom,0px)}
+  nav.tabs .wrap{padding-block:4px}
+  nav.tabs button{display:grid;justify-items:center;gap:2px;padding:6px 2px;font-size:.72rem;border-radius:10px}
+  nav.tabs button .ico{display:block}
+  main{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  #map{height:calc(100vh - 170px);height:calc(100dvh - 170px)}
+  .mapbar{padding-bottom:0}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+.leaflet-container{z-index:0}
+/* Routenbearbeitung */
+.stop .tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tools .btn.small{padding:5px 10px;font-size:.8rem}
+.btn.danger{background:transparent;color:var(--warn);border:1.5px solid var(--warn)}
+.leaflet-popup-content .pop-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.leaflet-popup-content .btn.small{padding:6px 10px;font-size:.82rem}
+.leaflet-popup-content .notice{margin-top:4px;font-size:.8rem}
+/* Betriebe gruppiert */
+.group h3{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 4px}
+.group h3 small{color:var(--muted);font:600 .75rem var(--body);letter-spacing:.06em;text-transform:uppercase}
+.place{grid-template-columns:1fr auto;align-items:start}
+.place .dist{font-variant-numeric:tabular-nums;font-weight:700;color:var(--wine);font-size:.85rem}
+.place .pt{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.place.inroute{border-left:3px solid var(--wine);padding-left:10px;margin-left:-13px}
+/* Wetter, Profil, Links */
+.wx{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:.9rem;color:var(--muted);margin-top:8px}
+.wx b{color:var(--fg);font-weight:600}
+.stop .wxs{display:inline-block;font-size:.78rem;color:var(--muted);margin-left:6px}
+.profile{width:100%;max-width:100%;height:110px;display:block;margin-top:8px}
+.profile text{font-family:var(--body);font-size:11px;fill:var(--muted)}
+.saved{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.saved:first-child{border-top:0}
+.saved b{font-family:var(--display);font-weight:500}
+.saved small{display:block;color:var(--muted)}
+.sun{color:var(--warn);font-weight:600}
