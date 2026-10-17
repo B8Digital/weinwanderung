@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
   const key = Deno.env.get("ORS_KEY");
   if (!key) return json({ error: "ORS_KEY nicht gesetzt" }, 500);
 
-  let body: { coordinates?: unknown };
+  let body: { coordinates?: unknown; quiet?: unknown };
   try { body = await req.json(); } catch { return json({ error: "Ungültiges JSON" }, 400); }
   const coords = body.coordinates;
   if (!Array.isArray(coords) || coords.length < 2 || coords.length > 25) return json({ error: "2–25 Koordinaten erwartet" }, 400);
@@ -44,7 +44,12 @@ Deno.serve(async (req: Request) => {
     if (lon < BOX.minLon || lon > BOX.maxLon || lat < BOX.minLat || lat > BOX.maxLat) return json({ error: "Koordinate außerhalb des Gebiets" }, 400);
   }
 
-  const payload = { coordinates: coords, elevation: true, instructions: false, units: "km" };
+  // Wander-Profil: bevorzugt Wanderwege, Pfade und ruhige Nebenstraßen; "quiet" meidet Bundes-/Landesstraßen so weit möglich.
+  const quiet = (body as { quiet?: unknown }).quiet === false ? 0 : 1;
+  const payload = {
+    coordinates: coords, elevation: true, instructions: false, units: "km",
+    options: { profile_params: { weightings: { quiet, green: 0.4 } } },
+  };
   const r = await fetch(ORS_URL, {
     method: "POST",
     headers: { "Authorization": key, "Content-Type": "application/json", "Accept": "application/json, application/geo+json" },
