@@ -172,3 +172,10 @@ nav.tabs button .ico{display:none;font-size:1.15rem;line-height:1}
 .saved b{font-family:var(--display);font-weight:500}
 .saved small{display:block;color:var(--muted)}
 .sun{color:var(--warn);font-weight:600}
+/* ---- Vereinfachte Bedienung ---- */
+.stop .head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.more{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:8px;width:34px;height:28px;font-size:1.1rem;line-height:1;cursor:pointer;flex:none}
+.links{font-size:.88rem}
+.links a,.place .links a{color:var(--wine);font-weight:600;text-decoration:none}
+.links a:hover{text-decoration:underline}
+.place .pt .btn.small{white-space:nowrap}

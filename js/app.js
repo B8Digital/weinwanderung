@@ -4,6 +4,9 @@ const C=window.WW_CONFIG;const P=window.Planner;
 const {hhmm,parseT,fmtKm,fmtMin}=P;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const webUrl=w=>/^https?:/.test(w)?w:"https://"+w;
+const webLabel=w=>w.replace(/^https?:\/\/(www\.)?/,"").split("/")[0];
+const linkHtml=p=>(p.web?'<a href="'+esc(webUrl(p.web))+'" target="_blank" rel="noopener">'+esc(webLabel(p.web))+'</a>':'')+(p.phone?(p.web?' · ':'')+'<a href="tel:'+esc(String(p.phone).replace(/\s/g,""))+'">'+esc(p.phone)+'</a>':'');
 const DOWN=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 const isoDate=d=>{const z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
 
@@ -61,7 +64,7 @@ function writeOpts(o){
   $("#stay").value=o.stay;$("#pace").value=o.pace;
   document.querySelectorAll("#interests input").forEach(i=>{i.checked=o.interests.includes(i.value);i.parentElement.dataset.on=i.checked?"1":"0";});
   const r=document.querySelector('input[name="ret"][value="'+o.returnMode+'"]');if(r){r.checked=true;$("#endWrap").hidden=o.returnMode!=="end";}
-  if(byId(o.start.id))$("#start").value=o.start.id;if(o.end&&byId(o.end.id))$("#end").value=o.end.id;
+  if(byId(o.start.id))$("#start").value=o.start.id;if(o.returnMode==="end"&&o.end&&byId(o.end.id))$("#end").value=o.end.id;
 }
 
 // ---------- Geocoding (Nominatim) ----------
@@ -285,8 +288,11 @@ function renderRoute(cur){
     if(it.p.note&&/Voranmeldung|anrufen/i.test(it.p.note))flag+=' <span class="flag">Voranmeldung</span>';
     const w=wxAt(it.arrive);const wxs=w?'<span class="wxs">'+WXICON(w.c)+' '+Math.round(w.t)+' °C'+(w.p>=20?' · '+w.p+' % Regen':'')+'</span>':'';
     const sun=sunset&&it.arrive>sunset&&isStop?' <span class="flag">nach Sonnenuntergang ('+hhmm(sunset)+')</span>':'';
-    const tools=(isStop||it.role==="sight")?'<div class="tools"><label class="mark"><input type="checkbox" data-done="'+esc(it.p.id)+'"'+(done?' checked':'')+'> erledigt</label><button class="btn small ghost" type="button" data-act="swap" data-id="'+esc(it.p.id)+'">Tauschen</button><button class="btn small danger" type="button" data-act="remove" data-id="'+esc(it.p.id)+'">Entfernen</button></div>':'';
-    rows.push('<div class="stop '+cls+(done?' done':'')+'"><div class="t">'+hhmm(it.arrive)+(it.stay?'<small>bis '+hhmm(it.depart)+'</small>':'')+'</div><div class="dot">'+label+'</div><div class="body"><b>'+esc(it.p.name)+'</b>'+wxs+'<p>'+esc(it.p.addr||"")+(it.p.note?' · '+esc(it.p.note):'')+(it.p.phone?' · <a href="tel:'+esc(String(it.p.phone).replace(/\s/g,""))+'">'+esc(it.p.phone)+'</a>':'')+'</p>'+flag+sun+tools+'</div></div>');
+    const editable=(isStop||it.role==="sight");
+    const tools=editable?'<div class="tools" hidden><label class="mark"><input type="checkbox" data-done="'+esc(it.p.id)+'"'+(done?' checked':'')+'> erledigt</label><button class="btn small ghost" type="button" data-act="swap" data-id="'+esc(it.p.id)+'">Tauschen</button><button class="btn small danger" type="button" data-act="remove" data-id="'+esc(it.p.id)+'">Entfernen</button></div>':'';
+    const more=editable?'<button class="more" type="button" aria-label="Optionen" data-more="1">⋯</button>':'';
+    const links=linkHtml(it.p);
+    rows.push('<div class="stop '+cls+(done?' done':'')+'"><div class="t">'+hhmm(it.arrive)+(it.stay?'<small>bis '+hhmm(it.depart)+'</small>':'')+'</div><div class="dot">'+label+'</div><div class="body"><div class="head"><b>'+esc(it.p.name)+'</b>'+more+'</div>'+wxs+'<p>'+esc(it.p.addr||"")+(it.p.note?' · '+esc(it.p.note):'')+'</p>'+(links?'<p class="links">'+links+'</p>':'')+flag+sun+tools+'</div></div>');
   });
   let taxi="";
   if(o.returnMode==="taxi"&&res.lastStop){
@@ -304,16 +310,18 @@ function renderRoute(cur){
   out.innerHTML=
     '<div class="card"><span class="eyebrow">'+DOWN[o.dow]+', '+o.date.toLocaleDateString("de-AT")+(res.estimated?' · Gehzeiten geschätzt':' · Wege: openrouteservice')+'</span><h2>Ab '+esc(o.start.name)+'</h2>'+
     '<div class="summary"><div><b>'+fmtKm(res.km)+'</b><span>zu Fuß'+(res.ascent?' · ↑'+Math.round(res.ascent)+' m':'')+'</span></div><div><b>'+fmtMin(res.walkMin)+'</b><span>Gehzeit</span></div><div><b>'+stops+'</b><span>Einkehren · je '+res.stayUsed+' min</span></div></div>'+wx+elevationProfile(cur)+
-    '<div class="row" style="margin-top:12px"><button class="btn small" type="button" id="toMap">Auf der Karte</button><button class="btn small ghost" type="button" id="shareBtn">Link teilen</button><button class="btn small ghost" type="button" id="shuffleBtn">Andere Vorschläge</button><button class="btn small ghost" type="button" id="saveBtn">Speichern</button></div></div>'+
+    '<div class="row" style="margin-top:12px"><button class="btn small" type="button" id="toMap">Karte</button><button class="btn small ghost" type="button" id="shareBtn">Teilen</button><button class="btn small ghost" type="button" id="moreBtn">Mehr …</button></div>'+
+    '<div class="row" id="moreRow" hidden style="margin-top:8px"><button class="btn small ghost" type="button" id="shuffleBtn">Andere Vorschläge</button><button class="btn small ghost" type="button" id="saveBtn">Speichern</button><a class="btn small ghost" href="'+mapsLink(res.items)+'" target="_blank" rel="noopener">Google Maps</a><button class="btn small ghost" type="button" id="copyRoute">Plan kopieren</button><button class="btn small ghost" type="button" id="replan">Eingaben ändern</button></div></div>'+
     warn+
-    '<div class="card"><span class="eyebrow">Tagesplan</span><p class="notice" style="margin:4px 0 0">Stopps lassen sich hier tauschen oder entfernen; weitere Betriebe nimmst du auf der Karte oder unter „Betriebe“ auf.</p><div class="timeline">'+rows.join("")+'</div></div>'+
-    '<div class="card stack" style="border-left:4px solid var(--wine)"><div><span class="eyebrow">Unterwegs</span><h3>Zeitplan verrutscht?</h3><p class="notice">Erledigte Stopps abhaken und ab jetzt neu planen: Start ist dein GPS-Standort (oder der letzte erledigte Stopp), Startzeit ist jetzt, die restlichen Einkehren werden neu gelegt, die Weintaxi-Zeit wandert mit.</p></div><button class="btn wide" type="button" id="replanNow">Ab jetzt neu planen</button></div>'+
+    '<div class="card"><span class="eyebrow">Tagesplan</span><p class="notice" style="margin:4px 0 0">⋯ bei einem Stopp öffnet Tauschen, Entfernen und Erledigt.</p><div class="timeline">'+rows.join("")+'</div></div>'+
     taxi+
-    '<div class="card"><div class="row"><a class="btn ghost" href="'+mapsLink(res.items)+'" target="_blank" rel="noopener">Google Maps</a><button class="btn ghost" type="button" id="copyRoute">Plan kopieren</button><button class="btn ghost" type="button" id="replan">Eingaben ändern</button></div></div>';
+    '<div class="card stack" style="border-left:4px solid var(--wine)"><div><span class="eyebrow">Unterwegs</span><p class="notice">Erledigte Stopps abhaken, dann ab GPS-Standort und aktueller Uhrzeit neu planen – die Weintaxi-Zeit wandert mit.</p></div><button class="btn wide" type="button" id="replanNow">Ab jetzt neu planen</button></div>';
   const cp=$("#copyPhone");if(cp)cp.addEventListener("click",()=>copy(WEINMOBIL.phone));
   $("#copyRoute").addEventListener("click",()=>copy(routeText(cur)));
   $("#replan").addEventListener("click",()=>showTab("tab-plan"));
   $("#toMap").addEventListener("click",()=>showTab("tab-map"));
+  $("#moreBtn").addEventListener("click",()=>{const r=$("#moreRow");r.hidden=!r.hidden;});
+  out.querySelectorAll("[data-more]").forEach(b=>b.addEventListener("click",()=>{const t=b.closest(".body").querySelector(".tools");t.hidden=!t.hidden;}));
   $("#replanNow").addEventListener("click",replanFromNow);
   $("#saveBtn").addEventListener("click",saveRoute);
   $("#shuffleBtn").addEventListener("click",()=>{const o={...cur.opts,jitter:1.6,exclude:[]};DONE=new Set();runPlan(o);});
@@ -340,7 +348,8 @@ function popupHtml(p,it){
   else if(p.kind!=="start"&&!inRoute(p.id))tools='<button class="btn small" type="button" data-act="add" data-id="'+esc(p.id)+'">In Route aufnehmen</button><button class="btn small ghost" type="button" data-act="next" data-id="'+esc(p.id)+'">Als nächsten Stopp</button>';
   if(p.kind!=="sight")tools+='<button class="btn small ghost" type="button" data-act="asstart" data-id="'+esc(p.id)+'">Als Start</button>';
   const ref=current?current.opts.start:byId($("#start").value);const dist=ref?'<div class="notice">'+fmtKm(P.dist(ref,p))+' Luftlinie ab '+esc(ref.name)+'</div>':'';
-  return time+'<b>'+esc(p.name)+'</b><div>'+esc(p.addr||"")+'</div>'+hours+(p.phone?'<div><a href="tel:'+esc(String(p.phone).replace(/\s/g,""))+'">'+esc(p.phone)+'</a></div>':'')+(p.web?'<div><a href="'+esc(/^https?:/.test(p.web)?p.web:"https://"+p.web)+'" target="_blank" rel="noopener">Website</a></div>':'')+dist+'<div class="pop-tools">'+tools+'</div>';
+  const links=linkHtml(p);
+  return time+'<b>'+esc(p.name)+'</b><div>'+esc(p.addr||"")+'</div>'+hours+(links?'<div>'+links+'</div>':'')+dist+'<div class="pop-tools">'+tools+'</div>';
 }
 function drawAllPlaces(){
   if(!map)return;layerAll.clearLayers();
@@ -386,9 +395,10 @@ function renderPlaces(){
     let btns='';
     if(ir)btns='<button class="btn small danger" type="button" data-act="remove" data-id="'+esc(p.id)+'">Entfernen</button>';
     else if(pendingInsert)btns='<button class="btn small" type="button" data-act="insert" data-id="'+esc(p.id)+'">Hier einfügen</button>';
-    else btns='<button class="btn small" type="button" data-act="next" data-id="'+esc(p.id)+'">Nächster Stopp</button><button class="btn small ghost" type="button" data-act="add" data-id="'+esc(p.id)+'">Passend einfügen</button>';
-    btns+='<button class="btn small ghost" type="button" data-edit="'+esc(p.id)+'">Lage</button>';
-    return '<div class="place'+(ir?' inroute':'')+'" data-id="'+esc(p.id)+'"><div><span class="dist">'+fmtKm(d)+'</span> <b>'+esc(p.name)+'</b>'+(ir?' <span class="tag w">in Route</span>':'')+'<p>'+esc(p.addr||"")+(p.phone?' · '+esc(p.phone):'')+'</p>'+(p.note?'<p>'+esc(p.note)+'</p>':'')+'<div><span class="tag w">'+kindName[p.kind]+'</span>'+(p.verified?'<span class="tag">OSM-verortet</span>':p.source==="osm"?'<span class="tag">aus OSM</span>':'')+(p.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+' '+stTxt+'</div></div><div class="pt">'+btns+'</div></div>';
+    else btns='<button class="btn small" type="button" data-act="next" data-id="'+esc(p.id)+'">Nächster Stopp</button>';
+    btns+='<button class="btn small ghost" type="button" data-edit="'+esc(p.id)+'">⋯</button>';
+    const links=linkHtml(p);
+    return '<div class="place'+(ir?' inroute':'')+'" data-id="'+esc(p.id)+'"><div><span class="dist">'+fmtKm(d)+'</span> <b>'+esc(p.name)+'</b>'+(ir?' <span class="tag w">in Route</span>':'')+'<p>'+esc(p.addr||"")+'</p>'+(links?'<p class="links">'+links+'</p>':'')+(p.note?'<p>'+esc(p.note)+'</p>':'')+'<div><span class="tag w">'+kindName[p.kind]+'</span>'+(p.verified?'<span class="tag">OSM-verortet</span>':p.source==="osm"?'<span class="tag">aus OSM</span>':'')+(p.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+' '+stTxt+'</div></div><div class="pt">'+btns+'</div></div>';
   };
   let html="";
   for(const [label,a,b] of groups){const g=ps.filter(x=>x.d>=a&&x.d<b);if(!g.length)continue;html+='<div class="card group"><h3>'+label+'<small>'+g.length+' Einträge</small></h3>'+g.map(item).join("")+'</div>';}
@@ -400,8 +410,8 @@ $("#placeList").addEventListener("click",e=>{
   const b=e.target.closest("[data-edit]");if(!b)return;const id=b.dataset.edit;const p=byId(id);const row=b.closest(".place");
   if(row.querySelector(".editor"))return;
   const ed=document.createElement("div");ed.className="editor stack";ed.style.gridColumn="1 / -1";
-  ed.innerHTML='<div class="grid2"><label class="f">Breite (lat)<input value="'+p.lat+'" inputmode="decimal"></label><label class="f">Länge (lon)<input value="'+p.lon+'" inputmode="decimal"></label></div><div class="row"><button class="btn small" type="button">Übernehmen</button><button class="btn small ghost" type="button">Abbrechen</button>'+(p.source==="osm"?'<button class="btn small ghost" type="button" data-hide="1">Ausblenden</button>':'')+'</div>';
-  row.appendChild(ed);const [la,lo]=ed.querySelectorAll("input");const [ok,cancel,hide]=ed.querySelectorAll("button");
+  ed.innerHTML=(!inRoute(id)&&!pendingInsert&&current?'<div class="row"><button class="btn small ghost" type="button" data-act="add" data-id="'+esc(id)+'">An passender Stelle einfügen</button></div>':'')+'<div class="grid2"><label class="f">Breite (lat)<input value="'+p.lat+'" inputmode="decimal"></label><label class="f">Länge (lon)<input value="'+p.lon+'" inputmode="decimal"></label></div><div class="row"><button class="btn small" type="button">Lage übernehmen</button><button class="btn small ghost" type="button">Schließen</button>'+(p.source==="osm"?'<button class="btn small ghost" type="button" data-hide="1">Ausblenden</button>':'')+'</div>';
+  row.appendChild(ed);const [la,lo]=ed.querySelectorAll("input");const bs=[...ed.querySelectorAll("button")].filter(b=>!b.dataset.act);const [ok,cancel,hide]=bs;
   cancel.addEventListener("click",()=>ed.remove());
   if(hide)hide.addEventListener("click",()=>{OVERRIDES[id]={...(OVERRIDES[id]||{}),hidden:true};store.set("ww.over",OVERRIDES);renderPlaces();fillSelects();drawAllPlaces();toast("Ausgeblendet");});
   ok.addEventListener("click",()=>{const lat=parseFloat(la.value.replace(",",".")),lon=parseFloat(lo.value.replace(",","."));if(!(lat>45&&lat<48&&lon>14&&lon<17)){toast("Koordinaten außerhalb der Steiermark");return;}

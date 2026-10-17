@@ -72,14 +72,13 @@
         <input type="hidden" id="nSights" value="2">
       </label>
     </div>
+    <details class="add" id="moreSettings"><summary>Weitere Einstellungen (Einkehrdauer, Tempo, Interessen)</summary>
+    <div class="stack" style="margin-top:10px">
     <div class="grid2">
       <label class="f">Einkehrdauer (Richtwert)<select id="stay"><option value="45">45 min</option><option value="60" selected>60 min</option><option value="75">75 min</option><option value="90">90 min</option></select></label>
       <label class="f">Tempo<select id="pace"><option value="3.2">gemütlich · 3,2 km/h</option><option value="3.8" selected>normal · 3,8 km/h</option><option value="4.5">zügig · 4,5 km/h</option></select></label>
     </div>
-  </div>
-
-  <div class="card stack">
-    <div><span class="eyebrow">Interessen</span><p class="notice" style="margin-top:2px">Wählt aus, welche Betriebe und Wegpunkte bevorzugt werden.</p></div>
+    <div><span class="eyebrow">Interessen</span></div>
     <div class="chips" id="interests">
       <label class="chip" data-on="1"><input type="checkbox" value="aussicht" checked>Aussicht &amp; Weinberge</label>
       <label class="chip" data-on="1"><input type="checkbox" value="kultur" checked>Kultur &amp; Geschichte</label>
@@ -88,10 +87,11 @@
       <label class="chip" data-on="0"><input type="checkbox" value="kulinarik">Jause &amp; Kulinarik</label>
       <label class="chip" data-on="0"><input type="checkbox" value="ruhig">Abseits des Trubels</label>
     </div>
+    </div></details>
   </div>
 
   <button class="btn wide" id="planBtn" type="button">Route planen</button>
-  <p class="notice" id="dataStatus">Betriebsdaten werden mit OpenStreetMap abgeglichen…</p>
+  <p class="notice" id="dataStatus" style="font-size:.8rem">Betriebsdaten werden mit OpenStreetMap abgeglichen…</p>
   <div class="card stack" id="savedCard" hidden>
     <div><span class="eyebrow">Gespeicherte Routen</span></div>
     <div id="savedList" class="stack"></div>
@@ -104,13 +104,13 @@
   <div class="mapbar wrap">
     <button class="btn small" type="button" id="locBtn">Mein Standort</button>
     <button class="btn small ghost" type="button" id="fitBtn">Route zeigen</button>
-    <span class="notice" id="mapStatus">Tipp: Betrieb antippen → in Route aufnehmen oder entfernen.</span>
+    <span class="notice" id="mapStatus">Betrieb antippen, um ihn aufzunehmen oder zu entfernen.</span>
   </div>
 </section>
 
 <!-- PLAN -->
 <section class="panel wrap stack" id="panel-route" role="tabpanel" hidden>
-  <div id="routeOut"><div class="card empty"><b>Noch keine Route</b>Unter „Planen“ Start, Zeitfenster und Einkehren wählen.</div></div>
+  <div id="routeOut"><div class="card empty"><b>Noch kein Tagesplan</b>Im Tab „Planen“ Start und Zeitfenster wählen.</div></div>
 </section>
 
 <!-- BETRIEBE -->
@@ -118,6 +118,7 @@
   <div class="card">
     <h2>Betriebe &amp; Wegpunkte</h2>
     <p class="notice" id="placesRef">Sortiert nach Entfernung ab Startpunkt.</p>
+    <p class="notice">„Nächster Stopp“ hängt den Betrieb an die Route an.</p>
     <div id="insertHint" class="notice" hidden></div>
     <div class="chips" style="margin-top:10px" id="placeFilter">
       <button class="chip" data-on="1" data-k="all" type="button">Alle</button>
