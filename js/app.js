@@ -91,7 +91,34 @@ $("#geoQ").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault()
 
 // ---------- GPS ----------
 function getPosition(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error("Kein GPS im Browser"));navigator.geolocation.getCurrentPosition(p=>res(p.coords),e=>rej(new Error(e.code===1?"Standortfreigabe abgelehnt":"Standort nicht verfügbar")),{enableHighAccuracy:true,timeout:12000,maximumAge:30000});});}
-$("#gpsStart").addEventListener("click",async()=>{try{const c=await getPosition();mePos={lat:c.latitude,lon:c.longitude};STARTS=STARTS.filter(s=>s.id!=="gps");STARTS.push({id:"gps",name:"Mein Standort",kind:"start",tags:[],lat:c.latitude,lon:c.longitude,addr:"GPS",temp:true});fillSelects();$("#start").value="gps";toast("Standort als Start gesetzt");updateMe();}catch(e){toast(e.message);}});
+// Laufende Standortverfolgung: blauer Punkt auf der Karte, Startpunkt-Option, Anzeige unter "Startpunkt"
+let geoWatch=null,geoLabel="",geoAcc=null,geoLabelAt=null;
+async function reverseName(lat,lon){
+  try{const r=await fetch(C.NOMINATIM_REVERSE+"?format=jsonv2&zoom=16&accept-language=de&lat="+lat.toFixed(5)+"&lon="+lon.toFixed(5),{headers:{"Accept":"application/json"}});if(!r.ok)return "";const j=await r.json();const a=j.address||{};
+    return [a.road||a.hamlet||a.neighbourhood,a.village||a.town||a.municipality||a.city].filter(Boolean).join(", ")||(j.display_name||"").split(",").slice(0,2).join(",");}catch(e){return "";}
+}
+function setMe(lat,lon,acc){
+  mePos={lat,lon};geoAcc=acc||null;
+  const gps=STARTS.find(s=>s.id==="gps");
+  if(gps){gps.lat=lat;gps.lon=lon;}else STARTS.unshift({id:"gps",name:"📍 Mein Standort",kind:"start",tags:[],lat,lon,addr:"GPS",temp:true});
+  const sel=$("#start").value;fillSelects();if(sel)$("#start").value=sel;
+  updateMe();renderGeo();
+  if(!geoLabelAt||P.dist(geoLabelAt,mePos)>0.25){geoLabelAt={lat,lon};reverseName(lat,lon).then(n=>{geoLabel=n;const g=STARTS.find(s=>s.id==="gps");if(g)g.addr=n||"GPS";renderGeo();});}
+}
+function renderGeo(){
+  const box=$("#geoBox"),t=$("#geoText");if(!box)return;
+  if(!mePos){t.innerHTML='Standort: <b>nicht freigegeben</b>';$("#geoUse").textContent="Standort ermitteln";return;}
+  const ref=byId($("#start").value);const d=ref&&ref.id!=="gps"?' · '+fmtKm(P.dist(ref,mePos))+' Luftlinie bis '+esc(ref.name):'';
+  t.innerHTML='Du bist hier: <b>'+esc(geoLabel||(mePos.lat.toFixed(4)+", "+mePos.lon.toFixed(4)))+'</b>'+d+(geoAcc?' <small>(±'+Math.round(geoAcc)+' m)</small>':'');
+  $("#geoUse").textContent=$("#start").value==="gps"?"Start ✓":"Als Start";
+}
+function startWatch(){
+  if(!navigator.geolocation||geoWatch!=null)return;
+  geoWatch=navigator.geolocation.watchPosition(p=>setMe(p.coords.latitude,p.coords.longitude,p.coords.accuracy),e=>{geoWatch=null;const t=$("#geoText");if(t)t.innerHTML='Standort: <b>'+(e.code===1?"nicht freigegeben":"nicht verfügbar")+'</b>';},{enableHighAccuracy:true,maximumAge:15000,timeout:20000});
+}
+$("#geoUse").addEventListener("click",()=>{if(!mePos){startWatch();toast("Standortfreigabe im Browser bestätigen");return;}$("#start").value="gps";renderGeo();toast("Standort als Start gesetzt");});
+$("#start").addEventListener("change",renderGeo);
+if(navigator.permissions&&navigator.permissions.query){navigator.permissions.query({name:"geolocation"}).then(st=>{if(st.state==="granted")startWatch();else renderGeo();st.onchange=()=>{if(st.state==="granted")startWatch();};}).catch(()=>renderGeo());}else renderGeo();
 
 // ---------- OpenStreetMap-Abgleich (Overpass) ----------
 const norm=s=>String(s).toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[^a-z0-9 ]+/g," ").replace(/\b(buschenschank|buschenschenke|buschenschanke|weingut|weinhof|weinbau|familie|fam|heuriger|heurigen|gasthaus|gasthof|restaurant|hotel|cafe|das|kleine|wirtshaus|vorm|am|der|die|und|by|an|weinstrasse)\b/g," ").replace(/\s+/g," ").trim();
@@ -432,12 +459,37 @@ function popupHtml(p,it){
   const links=linkHtml(p);
   return time+'<b>'+esc(p.name)+'</b><div>'+esc(p.addr||"")+'</div>'+hours+(links?'<div>'+links+'</div>':'')+dist+'<div class="pop-tools">'+tools+'</div>';
 }
+function openPlaceSheet(p,it){
+  const kindName={buschenschank:"Buschenschank",gasthaus:"Gasthaus",sight:"Wegpunkt",start:"Startpunkt"};
+  const st=(p.kind==="buschenschank"||p.kind==="gasthaus")?P.openStatus(p,current?current.opts.dow:new Date().getDay(),it?it.arrive:(current?current.opts.startTime+2:14)):null;
+  const stTxt=!st?"":st.s==="open"?'<span class="flag ok">geöffnet bis '+hhmm(st.close)+'</span>':st.s==="later"?'<span class="flag">öffnet um '+hhmm(st.opens)+'</span>':st.s==="closed"?'<span class="flag">heute Ruhetag</span>':'';
+  const ref=current?current.opts.start:byId($("#start").value);
+  const rows=[];
+  if(it)rows.push(["Im Plan",hhmm(it.arrive)+(it.stay?" – "+hhmm(it.depart):"")]);
+  if(p.addr)rows.push(["Adresse",esc(p.addr)]);
+  if(p.oh)rows.push(["Öffnungszeiten",esc(p.oh)+" <small>(OSM)</small>"]);
+  if(p.phone)rows.push(["Telefon",'<a href="tel:'+esc(String(p.phone).replace(/\s/g,""))+'">'+esc(p.phone)+'</a>']);
+  if(p.web)rows.push(["Website",'<a href="'+esc(webUrl(p.web))+'" target="_blank" rel="noopener">'+esc(webLabel(p.web))+'</a>']);
+  if(ref&&ref.id!==p.id)rows.push(["Luftlinie",fmtKm(P.dist(ref,p))+" ab "+esc(ref.name)]);
+  if(mePos&&p.id!=="gps")rows.push(["Von mir",fmtKm(P.dist(mePos,p))+" Luftlinie"]);
+  let tools="";
+  if(it&&(it.role==="stop"||it.role==="sight"))tools='<button class="btn small danger" type="button" data-act="remove" data-id="'+esc(p.id)+'">Aus Route entfernen</button><button class="btn small ghost" type="button" data-act="swap" data-id="'+esc(p.id)+'">Tauschen</button>';
+  else if(p.kind!=="start"&&!inRoute(p.id))tools='<button class="btn small" type="button" data-act="add" data-id="'+esc(p.id)+'">In Route aufnehmen</button><button class="btn small ghost" type="button" data-act="next" data-id="'+esc(p.id)+'">Als nächsten Stopp</button>';
+  if(p.kind!=="sight")tools+='<button class="btn small ghost" type="button" data-act="asstart" data-id="'+esc(p.id)+'">Als Startpunkt</button>';
+  $("#placeSheet").innerHTML='<div class="row" style="justify-content:space-between;align-items:flex-start"><div><span class="eyebrow">'+kindName[p.kind]+(p.verified?" · OSM-verortet":p.source==="osm"?" · aus OSM":"")+'</span><h2 style="margin:4px 0 0">'+esc(p.name)+'</h2></div><button class="more" type="button" data-close="placeModal" aria-label="Schließen">×</button></div>'+
+    (p.note?'<p class="notice" style="margin:0">'+esc(p.note)+'</p>':'')+(stTxt?'<div>'+stTxt+'</div>':'')+
+    '<div class="kv">'+rows.map(r=>'<span>'+r[0]+'</span><span>'+r[1]+'</span>').join("")+'</div>'+
+    (p.tags&&p.tags.length?'<div>'+p.tags.map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div>':'')+
+    '<div class="pop-tools">'+tools+'</div>';
+  $("#placeModal").hidden=false;
+}
+$("#placeModal").addEventListener("click",e=>{if(e.target===$("#placeModal")||e.target.closest("[data-close]")||e.target.closest("[data-act]"))$("#placeModal").hidden=true;});
 function drawAllPlaces(){
   if(!map)return;layerAll.clearLayers();
   for(const p of allPlaces()){
     if(p.temp||inRoute(p.id))continue;
-    const cls=(p.kind==="sight"?"sight":p.kind==="start"?"edge":"")+" faint";
-    L.marker([p.lat,p.lon],{icon:pin(cls,"",16)}).bindPopup(()=>popupHtml(p)).addTo(layerAll);
+    const cls=(p.kind==="sight"?"sight":p.kind==="start"?"edge":"")+" poi";
+    L.marker([p.lat,p.lon],{icon:pin(cls,"",p.kind==="sight"?16:22)}).on("click",()=>openPlaceSheet(p)).addTo(layerAll);
   }
 }
 function drawRoute(cur){
@@ -448,12 +500,20 @@ function drawRoute(cur){
   if(cur.opts.returnMode==="taxi"&&cur.res.lastStop)L.polyline([[cur.res.lastStop.p.lat,cur.res.lastStop.p.lon],[cur.opts.start.lat,cur.opts.start.lon]],{color:"#d9a441",weight:3,dashArray:"2 8"}).addTo(layerRoute);
   let n=0;
   cur.res.items.forEach(it=>{const isStop=it.role==="stop";if(isStop)n++;const cls=it.role==="sight"?"sight":isStop?"":"edge";const label=it.role==="start"?"S":it.role==="end"?"Z":isStop?String(n):"";
-    L.marker([it.p.lat,it.p.lon],{icon:pin(cls,label,it.role==="sight"?18:26),zIndexOffset:500}).bindPopup(()=>popupHtml(it.p,it)).addTo(layerRoute);});
+    L.marker([it.p.lat,it.p.lon],{icon:pin(cls,label,it.role==="sight"?18:26),zIndexOffset:500}).on("click",()=>openPlaceSheet(it.p,it)).addTo(layerRoute);});
   if(!$("#panel-map").hidden)fitRoute();
 }
 function fitRoute(){if(!map||!current)return;const pts=current.geometry?current.geometry.map(c=>[c[0],c[1]]):current.route.map(r=>[r.p.lat,r.p.lon]);map.fitBounds(L.latLngBounds(pts).pad(0.12));}
-function updateMe(){if(!map||!mePos)return;if(!meMarker){meMarker=L.marker([mePos.lat,mePos.lon],{icon:L.divIcon({className:"",html:'<div class="ww-me"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:1000}).addTo(map);}else meMarker.setLatLng([mePos.lat,mePos.lon]);}
-$("#locBtn").addEventListener("click",async()=>{try{$("#mapStatus").textContent="Standort wird ermittelt…";const c=await getPosition();mePos={lat:c.latitude,lon:c.longitude};updateMe();map.setView([mePos.lat,mePos.lon],15);$("#mapStatus").textContent="";}catch(e){$("#mapStatus").textContent=e.message;}});
+let meCircle=null;
+function updateMe(){if(!map||!mePos)return;
+  if(!meMarker){meMarker=L.marker([mePos.lat,mePos.lon],{icon:L.divIcon({className:"",html:'<div class="ww-me"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:1000}).addTo(map).bindPopup(()=>'<b>Mein Standort</b><div>'+esc(geoLabel||"")+'</div>');}
+  else meMarker.setLatLng([mePos.lat,mePos.lon]);
+  if(geoAcc){if(!meCircle)meCircle=L.circle([mePos.lat,mePos.lon],{radius:geoAcc,className:"ww-me-acc",weight:1}).addTo(map);else{meCircle.setLatLng([mePos.lat,mePos.lon]);meCircle.setRadius(geoAcc);}}
+}
+$("#locBtn").addEventListener("click",async()=>{
+  if(mePos){map.setView([mePos.lat,mePos.lon],15);return;}
+  try{$("#mapStatus").textContent="Standort wird ermittelt…";const c=await getPosition();setMe(c.latitude,c.longitude,c.accuracy);startWatch();map.setView([mePos.lat,mePos.lon],15);$("#mapStatus").textContent="";}catch(e){$("#mapStatus").textContent=e.message;}
+});
 $("#fitBtn").addEventListener("click",()=>{if(current)fitRoute();else toast("Noch keine Route geplant");});
 
 // ---------- Betriebe (nach Entfernung gegliedert) ----------

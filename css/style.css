@@ -188,3 +188,15 @@ header.top .wrap{align-items:center}
 .modal .sheet{width:100%;max-width:480px;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 @media (min-width:721px){.modal{place-items:center}}
 #shareUrl{font-size:.9rem}
+
+/* ---- Standort & Betriebs-Detail ---- */
+.geo{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:.9rem;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.geo b{color:var(--fg)}
+.ww-pin.poi{width:22px;height:22px;opacity:.9;border-width:2px}
+.ww-pin.poi.sight{width:16px;height:16px}
+.ww-pin.poi.edge{width:18px;height:18px}
+.ww-me-acc{stroke:#2a7fff;fill:#2a7fff;fill-opacity:.12;stroke-opacity:.5}
+#placeSheet h2{font-size:1.3rem}
+#placeSheet .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.95rem}
+#placeSheet .kv span:first-child{color:var(--muted)}
+#placeSheet .pop-tools{display:flex;gap:8px;flex-wrap:wrap}
