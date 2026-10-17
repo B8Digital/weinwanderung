@@ -458,6 +458,9 @@ $("#fitBtn").addEventListener("click",()=>{if(current)fitRoute();else toast("Noc
 
 // ---------- Betriebe (nach Entfernung gegliedert) ----------
 let placeKind="all";
+const norm2=s=>String(s||"").toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+$("#placeQ").addEventListener("input",()=>{$("#placeQClear").hidden=!$("#placeQ").value;renderPlaces();});
+$("#placeQClear").addEventListener("click",()=>{$("#placeQ").value="";$("#placeQClear").hidden=true;renderPlaces();$("#placeQ").focus();});
 function refPoint(){
   if(pendingInsert)return {p:pendingInsert.ref,label:"ab "+pendingInsert.ref.name+" (Ersatz einfügen)"};
   if(current){const stops=current.route.filter(r=>r.role==="stop"||r.role==="sight");const last=stops[stops.length-1];if(last)return {p:last.p,label:"ab letztem Stopp "+last.p.name+" – „Nächster Stopp“ hängt dort an"};return {p:current.opts.start,label:"ab Startpunkt "+current.opts.start.name};}
@@ -466,7 +469,9 @@ function refPoint(){
 function renderPlaces(){
   const ref=refPoint();$("#placesRef").textContent=ref.p?"Sortiert nach Luftlinie "+ref.label+".":"";
   const kindName={buschenschank:"Buschenschank",gasthaus:"Gasthaus",sight:"Wegpunkt"};
+  const qn=norm2($("#placeQ")?$("#placeQ").value:"");
   let ps=allPlaces().filter(p=>p.kind!=="start"&&(placeKind==="all"||p.kind===placeKind));
+  if(qn)ps=ps.filter(p=>norm2([p.name,p.addr,p.note,(p.tags||[]).join(" ")].join(" ")).includes(qn));
   ps=ps.map(p=>({p,d:ref.p?P.dist(ref.p,p):0})).sort((a,b)=>a.d-b.d||a.p.name.localeCompare(b.p.name,"de"));
   const groups=[["bis 1,5 km",0,1.5],["1,5 – 3 km",1.5,3],["3 – 5 km",3,5],["über 5 km",5,1e9]];
   const now=new Date();const dow=current?current.opts.dow:now.getDay();
@@ -483,7 +488,7 @@ function renderPlaces(){
   };
   let html="";
   for(const [label,a,b] of groups){const g=ps.filter(x=>x.d>=a&&x.d<b);if(!g.length)continue;html+='<div class="card group"><h3>'+label+'<small>'+g.length+' Einträge</small></h3>'+g.map(item).join("")+'</div>';}
-  $("#placeList").innerHTML=html||'<div class="card empty"><b>Keine Einträge</b></div>';
+  $("#placeList").innerHTML=html||'<div class="card empty"><b>'+(qn?'Nichts gefunden':'Keine Einträge')+'</b>'+(qn?'Anders schreiben oder die Suche löschen.':'')+'</div>';
 }
 renderPlaces();
 $("#placeFilter").addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(!b)return;placeKind=b.dataset.k;$("#placeFilter").querySelectorAll(".chip").forEach(c=>c.dataset.on=c===b?"1":"0");renderPlaces();});

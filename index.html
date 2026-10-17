@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 
@@ -143,6 +143,7 @@
     <p class="notice" id="placesRef">Sortiert nach Entfernung ab Startpunkt.</p>
     <p class="notice">„Nächster Stopp“ hängt den Betrieb an die Route an.</p>
     <div id="insertHint" class="notice" hidden></div>
+    <div class="row" style="margin-top:10px"><input class="grow" id="placeQ" type="search" placeholder="Betrieb oder Ort suchen …" aria-label="Betriebe durchsuchen" autocomplete="off"><button class="btn small ghost" type="button" id="placeQClear" hidden aria-label="Suche löschen">×</button></div>
     <div class="chips" style="margin-top:10px" id="placeFilter">
       <button class="chip" data-on="1" data-k="all" type="button">Alle</button>
       <button class="chip" data-on="0" data-k="buschenschank" type="button">Buschenschank</button>
@@ -176,9 +177,9 @@
 
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="vendor/supabase/supabase.js"></script>
-<script src="js/config.js?v=7"></script>
-<script src="js/places.js?v=7"></script>
-<script src="js/planner.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/places.js?v=8"></script>
+<script src="js/planner.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
 </body>
 </html>
