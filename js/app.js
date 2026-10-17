@@ -262,7 +262,8 @@ function renderUser(){const b=$("#userBtn");if(!b)return;if(USER){b.textContent=
 if(sb){
   sb.auth.getSession().then(({data})=>{USER=data.session?data.session.user:null;renderUser();});
   sb.auth.onAuthStateChange((_e,session)=>{USER=session?session.user:null;renderUser();});
-}else{const b=$("#userBtn");if(b)b.hidden=true;}
+}
+if(!sb||!C.AUTH_ENABLED){const b=$("#userBtn");if(b)b.hidden=true;}
 $("#userBtn").addEventListener("click",()=>{renderUser();$("#authModal").hidden=false;$("#authStatus").textContent="";});
 $("#authClose").addEventListener("click",()=>$("#authModal").hidden=true);
 $("#authModal").addEventListener("click",e=>{if(e.target===$("#authModal"))$("#authModal").hidden=true;});

@@ -9,5 +9,6 @@ window.WW_CONFIG = {
   NOMINATIM_URL: "https://nominatim.openstreetmap.org/search",
   // Suchgebiet Südsteirische Weinstraße (Süd, West, Nord, Ost)
   BBOX: [46.67, 15.46, 46.78, 15.66],
-  OSM_CACHE_DAYS: 7
+  OSM_CACHE_DAYS: 7,
+  AUTH_ENABLED: false   // Anmeldung vorbereitet, vorerst ausgeblendet
 };
